@@ -1,0 +1,60 @@
+[
+  {
+    "answers": [
+      "Seid",
+      "Randy",
+      "Pramod",
+      "Rosinda"
+    ],
+    "default": "Seid",
+    "question": "Operator",
+    "question_type": "radio"
+  },
+  {
+    "default": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ],
+    "question": "Sample names? (select up to four)",
+    "question_type": "checkbox"
+  },
+  {
+    "answers": [
+      "PCE (%)",
+      "FF (%)",
+      "Voc (V)",
+      "Jsc (mA/cm^2)",
+      "MPP (V)",
+      "Rser (Ohm-cm^2)",
+      "Rsh (Ohm-cm^2)"
+    ],
+    "default": "MPP (V)",
+    "question": "Parameter to plot?",
+    "question_type": "radio"
+  },
+  {
+    "answers": [
+      "forward",
+      "reverse",
+      "both"
+    ],
+    "default": "reverse",
+    "question": "Scan direction?",
+    "question_type": "radio"
+  },
+  {
+    "answers": [
+      "Time series",
+      "Box plot"
+    ],
+    "default": "Box plot",
+    "question": "Plot type?",
+    "question_type": "radio"
+  }
+]
