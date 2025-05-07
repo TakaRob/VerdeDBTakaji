@@ -115,3 +115,105 @@ With the environment prepared, connect your PowerShell session to your Azure acc
 ---
 
 **Setup Complete.** Your PowerShell 7.5 environment is now configured with the Azure Az module, and you should be able to execute commands against your Azure subscription.
+
+---
+## Setting Up Python Environment for Verde Database Scripts and Notebooks
+
+This section guides you through setting up a Conda environment to run the Python scripts (`db_dataverse.py`, `db_form.py`) and Jupyter notebooks (`.ipynb` files such as `Solar_Simulator_IV_sweep_with_lamp_control_V4s_verde.ipynb`) described in the "Files" section of this document.
+
+### Prerequisites for Python Setup
+
+1.  **Git:** (If not already installed for previous PowerShell steps). You need Git installed on your system to clone the repository. You can download it from https://git-scm.com/.
+2.  **`environment.yml` file:** This file should be present in the root of the `Verde_database` project repository. It defines the Conda environment and its dependencies. An example structure relevant to this project might be:
+
+    ```yaml
+    name: verde_env # Suggested environment name for this project
+    channels:
+      - conda-forge
+      - defaults
+    dependencies:
+      - python=3.9 # Or your project's Python version
+      - jupyterlab
+      - pandas # Likely needed for data handling and notebooks
+      # Consider adding packages for Dataverse interaction if db_dataverse.py needs them, e.g.:
+      # - msal # For authentication if using MSAL directly
+      # - requests
+      # - azure-identity # If using Azure SDK for authentication
+      # Add other specific packages required by your Python scripts and notebooks
+      - pip
+      # - pip:
+      #   - some-pip-package # If any pip-specific packages are needed
+    ```
+
+---
+
+### Step 1: Clone the Project Repository (If you haven't already)
+
+If you don't have the `Verde_database` project files on your system yet, open your terminal or Git Bash. Use the `git clone` command. Replace `<VERDE_DATABASE_REPOSITORY_URL>` with the actual URL for the project.
+
+```bash
+git clone <VERDE_DATABASE_REPOSITORY_URL>
+```
+
+### Step 2: Install Miniconda (If Conda is not yet installed)
+
+Conda will manage our Python environment and its packages. We recommend installing Miniconda, which is a minimal installer for Conda. This is a separate step from installing Python for PowerShell, if applicable.
+
+1. Go to the Miniconda download page: Miniconda — conda documentation
+2. Download the installer appropriate for your operating system.
+3. Run the installer and follow the on-screen instructions. For consistency, it's often easier to use Anaconda Prompt on Windows or ensure your terminal is correctly initialized for Conda on macOS/Linux.
+
+---
+
+### Step 3: Open Anaconda Prompt (or Your Terminal)
+
+- **Windows:** Search for "Anaconda Prompt" in your Start Menu and open it. This prompt is pre-configured to use Conda commands.
+- **macOS/Linux:** Open your standard terminal window. (Ensure Conda has been initialized for your shell by the Miniconda installer, which might require restarting your terminal).
+
+---
+
+### Step 4: Navigate to the Cloned Project Directory
+
+In the Anaconda Prompt or terminal you opened, change your current directory to the Verde_database folder (or whatever your cloned project directory is named).
+
+```bash
+cd path/to/Verde_database
+```
+
+---
+
+### Step 5: Create the Conda Environment
+
+Use the environment.yml file from the project to create the dedicated Conda environment. We suggest naming the environment **verde_env** for this project, or use the name specified within the environment.yml if it has one.
+
+```bash
+conda env create -f environment.yml -n verde_env
+```
+
+---
+
+### Step 6: Activate the Conda Environment
+
+Once the environment is created, you need to activate it. This makes the environment's Python interpreter and packages available in your current shell session.
+
+```bash
+conda activate verde_env
+```
+
+Your terminal prompt should now change to indicate that the environment is active (e.g., `(verde_env) C:\Users\YourUser\path\to\Verde_database>`).
+
+---
+
+### Step 7: Launch JupyterLab
+
+With the **verde_env** (or your chosen environment name) activated, you can now launch JupyterLab. This will allow you to work with the project's Jupyter notebooks, such as `Solar_Simulator_IV_sweep_with_lamp_control_V4s_verde.ipynb` and `Solar_Simulator_timeseries_report_V1.ipynb`.
+
+```bash
+jupyter lab
+```
+
+This command will start a JupyterLab server and typically open it in your default web browser.
+
+---
+
+This concludes the setup for the Python/Conda environment for the Verde_database project. You should now be able to run the project's Python scripts and Jupyter notebooks.
