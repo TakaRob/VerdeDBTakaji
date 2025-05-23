@@ -9,7 +9,7 @@ import lmfit as lm
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
-# Try to import from db_dataverse.py; 
+# Try to import from db_dataverse.py; provide dummy classes if not found
 try:
     from db_dataverse import SampleDataverseTable, JVScanDataverseTable
 except ImportError:
@@ -17,14 +17,14 @@ except ImportError:
     class SampleDataverseTable:
         def __init__(self, *args, **kwargs): pass
         def recent_entries(self, num): return [], pd.DataFrame(), None
-        def get_entries_by_criteria(self, *args, **kwargs): return [], pd.DataFrame(), None # Add dummy
-        def check_existence(self, *args, **kwargs): return False, None, None # Add dummy
+        def get_entries_by_criteria(self, *args, **kwargs): return [], pd.DataFrame(), None 
+        def check_existence(self, *args, **kwargs): return False, None, None 
     class JVScanDataverseTable:
         def __init__(self, *args, **kwargs): pass
         def recent_entries(self, num): return [], pd.DataFrame(), None
-        def get_entries_by_criteria(self, *args, **kwargs): return [], pd.DataFrame(), None # Add dummy
-        def insert_data(self, *args, **kwargs): return None # Add dummy
-        def calc_and_save_parameters_db(self, *args, **kwargs): return pd.DataFrame() # Add dummy
+        def get_entries_by_criteria(self, *args, **kwargs): return [], pd.DataFrame(), None 
+        def insert_data(self, *args, **kwargs): return None 
+        def calc_and_save_parameters_db(self, *args, **kwargs): return pd.DataFrame()
 
 
 # --- Database Interaction Functions (Data Fetching Wrappers) ---
@@ -48,27 +48,20 @@ def get_jv_data_by_criteria_nb(jv_table_obj, sample_ids=None, date_from=None, da
     )
     
     if jv_test_values_df is not None and not jv_test_values_df.empty:
-        # Calculate 'abs_epoch_time'
         if 'abs_epoch_time' not in jv_test_values_df.columns and \
            'base_time' in jv_test_values_df.columns and \
            'elapsed_time' in jv_test_values_df.columns:
             try:
-                # Ensure 'base_time' and 'elapsed_time' are numeric, coercing errors
                 base_time_numeric = pd.to_numeric(jv_test_values_df['base_time'], errors='coerce')
                 elapsed_time_numeric = pd.to_numeric(jv_test_values_df['elapsed_time'], errors='coerce')
-                
-                # Calculate 'abs_epoch_time'
-                # Ensure that the calculation handles potential NaNs from coercion
                 jv_test_values_df['abs_epoch_time'] = base_time_numeric + (60.0 * elapsed_time_numeric)
-                
                 if jv_test_values_df['abs_epoch_time'].isnull().any():
                     print("WARNING (functions.py): Some 'abs_epoch_time' values are NaN after calculation. Check 'base_time' or 'elapsed_time' for non-numeric data or missing values.")
             except Exception as e:
                 print(f"WARNING (functions.py): Could not create 'abs_epoch_time' in get_jv_data_by_criteria_nb: {e}")
     else:
-        # If df is None or empty, ensure a consistent return structure
         if jv_test_values_df is None:
-             jv_test_values_df = pd.DataFrame() # Return empty DataFrame
+             jv_test_values_df = pd.DataFrame() 
         if jv_test_ids is None:
             jv_test_ids = []
 
@@ -76,14 +69,12 @@ def get_jv_data_by_criteria_nb(jv_table_obj, sample_ids=None, date_from=None, da
 
 # --- Timestamp Conversion Functions ---
 def epoch_to_timestamp(ts):
-    '''Convert a unix epoch to a YYYY-MM-DD hh:mm:ss timestamp'''
     try:
         return datetime.fromtimestamp(float(ts)).strftime('%Y-%m-%d %H:%M:%S')
-    except (ValueError, TypeError, OSError): # Added OSError for robustness
+    except (ValueError, TypeError, OSError):
         return None
 
 def timestamp_to_epoch(dt_str):
-    '''Convert YYYY-MM-DD hh:mm:ss timestamp string to a unix epoch'''
     try:
         datetime_obj = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
         return datetime_obj.timestamp()
@@ -103,33 +94,24 @@ def dataframe_clumping(jv_test_data_list_dfs, min_gap_width=1.0, max_clump_width
         required_cols_for_clumping = ['base_time', 'elapsed_time']
         if not all(col in df.columns for col in required_cols_for_clumping):
             print(f"WARNING (dataframe_clumping): DataFrame for sample index {i} is missing 'base_time' or 'elapsed_time'. Skipping clumping.")
-            jv_test_data_list_2.append(df) # Append original (copied) df if clumping can't proceed
+            jv_test_data_list_2.append(df) 
             continue
         
-        df2 = df.copy() # Work with another copy for modifications
+        df2 = df.copy()
 
         try:
-            # Coerce to numeric, turning errors into NaT/NaN
             base_time_numeric = pd.to_numeric(df['base_time'], errors='coerce')
             elapsed_time_numeric = pd.to_numeric(df['elapsed_time'], errors='coerce')
-            
-            # Handle potential NaNs before calculation or ensure epoch_to_timestamp can handle them
             tsl = base_time_numeric + 60.0 * elapsed_time_numeric
-            
-            # If tsl contains NaNs because base_time or elapsed_time were not numeric, handle this
             if tsl.isnull().any():
                  print(f"WARNING (dataframe_clumping): Sample index {i} has non-numeric 'base_time' or 'elapsed_time', affecting 'tsl' and 'time_hrs'.")
-
         except Exception as e:
             print(f"WARNING (dataframe_clumping): Error creating tsl for clumping for sample index {i}: {e}")
-            jv_test_data_list_2.append(df) # Append original (copied) df
+            jv_test_data_list_2.append(df) 
             continue
             
-        timestamp_series = tsl.apply(epoch_to_timestamp) # This will pass NaNs if tsl has them
-        
+        timestamp_series = tsl.apply(epoch_to_timestamp)
         df2.insert(0, "measured_on", timestamp_series)
-        
-        # Ensure min_base_time_val calculation deals with NaNs
         min_base_time_val = pd.to_numeric(df['base_time'], errors='coerce').dropna().min()
 
         if pd.isna(min_base_time_val):
@@ -138,7 +120,6 @@ def dataframe_clumping(jv_test_data_list_dfs, min_gap_width=1.0, max_clump_width
         else:
             df2.insert(1, "time_hrs", (tsl - min_base_time_val) / 3600)
 
-        # Sort and drop rows where 'time_hrs' is NaN (essential for diff operations)
         df2_sorted = df2.sort_values(by='time_hrs').copy()
         df2_sorted.dropna(subset=['time_hrs'], inplace=True)
 
@@ -147,31 +128,27 @@ def dataframe_clumping(jv_test_data_list_dfs, min_gap_width=1.0, max_clump_width
             jv_test_data_list_2.append(df2_sorted) 
             continue
 
-        time_hrs_list_shifted = [time_hrs_list[0]] + time_hrs_list[:-1] # First element will have interval of 0
+        time_hrs_list_shifted = [time_hrs_list[0]] + time_hrs_list[:-1]
         time_intervals = [t2 - t1 for t2, t1 in zip(time_hrs_list, time_hrs_list_shifted)]
 
-        clump_assignments = [0] * len(df2_sorted) # Initialize with zeros
-        if not df2_sorted.empty: # Should always be true if time_hrs_list is not empty
-            clump_assignments[0] = 0 # First point is in clump 0
+        clump_assignments = [0] * len(df2_sorted)
+        if not df2_sorted.empty:
+            clump_assignments[0] = 0
             clump_number = 0
-            clump_elapsed_time = 0.0 # Initialize elapsed time for the current clump
+            clump_elapsed_time = 0.0
             
             for ind in range(1, len(time_intervals)):
                 clump_elapsed_time += time_intervals[ind]
-                if time_intervals[ind] >= min_gap_width: # Start of a new clump
+                if time_intervals[ind] >= min_gap_width:
                     clump_number += 1
-                    clump_elapsed_time = 0.0 # Reset elapsed time for the new clump
+                    clump_elapsed_time = 0.0
                 elif clump_elapsed_time > max_clump_width:
-                    # This condition means a clump has exceeded max_clump_width without a min_gap_width occurring.
-                    # Depending on desired behavior, this might also trigger a new clump or just a warning.
-                    # Original notebook prints a warning. Let's keep that.
                     print(f"WARNING (dataframe_clumping): Clump elapsed time {round(clump_elapsed_time,5)} exceeded max_clump_width {max_clump_width} for a sample.")
                 clump_assignments[ind] = clump_number
-            df2_sorted["clump_number"] = clump_assignments # Use .loc for safer assignment if needed, but direct should work
+            df2_sorted["clump_number"] = clump_assignments
         
         jv_test_data_list_2.append(df2_sorted)
     return jv_test_data_list_2
-
 
 def read_json_file(file_path):
     try:
@@ -200,7 +177,7 @@ def get_parameter_details(parameter_ylabel_form):
         return param_map[parameter_ylabel_form]
     else:
         print(f"Warning (get_parameter_details): Invalid parameter ylabel for plot: {parameter_ylabel_form}. Defaulting to PCE.")
-        return "pce", "PCE (%)" # Default to PCE
+        return "pce", "PCE (%)"
 
 def plot_time_series_from_form(df_list_processed, sample_ids_selected, parameter_to_plot, 
                                parameter_ylabel, direction_response,
@@ -214,7 +191,6 @@ def plot_time_series_from_form(df_list_processed, sample_ids_selected, parameter
         ax.text(0.5, 0.5, "No data to plot", ha='center', va='center', transform=ax.transAxes)
         return fig
 
-    # Single sample detailed plot
     if len(df_list_processed) == 1 and len(sample_ids_selected) == 1:
         sample_id = sample_ids_selected[0]
         df2 = df_list_processed[0]
@@ -224,16 +200,13 @@ def plot_time_series_from_form(df_list_processed, sample_ids_selected, parameter
             ax.text(0.5, 0.5, f"No data for {sample_id}", ha='center', va='center', transform=ax.transAxes)
             return fig
         
-        # Ensure the parameter column is numeric
         df2[parameter_to_plot] = pd.to_numeric(df2[parameter_to_plot], errors='coerce')
-        
-        # Filter by scan type and drop NaNs for the parameter to plot
         df2_fwd = df2[df2['scan_type'] == 'F'].dropna(subset=[parameter_to_plot])
         df2_rev = df2[df2['scan_type'] == 'R'].dropna(subset=[parameter_to_plot])
-
         alpha_val = 0.75
-        symbols = ['.', 's--', 'o--', '^--', 'v--', '*--', '>--'] # Define outside loop
+        symbols = ['.', 's--', 'o--', '^--', 'v--', '*--', '>--'] 
 
+        # This function's logic already handles "Forward", "Reverse", "Both" as input strings for direction_response
         if direction_response.lower() == "both":
             alpha_val = 0.5
             if not df2_rev.empty: ax.plot(df2_rev["time_hrs"], df2_rev[parameter_to_plot], 'co', label="Reverse sweep", alpha=alpha_val)
@@ -242,7 +215,6 @@ def plot_time_series_from_form(df_list_processed, sample_ids_selected, parameter
             if not df2_fwd.empty:
                 for cellnum_str in sorted(df2_fwd['cell_number'].astype(str).unique()):
                     try:
-                        # cellnum = int(cellnum_str) # For modulo, but ensure it's okay if not purely numeric
                         df2_onecell = df2_fwd[df2_fwd['cell_number'] == cellnum_str]
                         if not df2_onecell.empty: 
                             ax.plot(df2_onecell["time_hrs"], df2_onecell[parameter_to_plot], 
@@ -254,7 +226,6 @@ def plot_time_series_from_form(df_list_processed, sample_ids_selected, parameter
             if not df2_rev.empty:
                 for cellnum_str in sorted(df2_rev['cell_number'].astype(str).unique()):
                     try:
-                        # cellnum = int(cellnum_str)
                         df2_onecell = df2_rev[df2_rev['cell_number'] == cellnum_str]
                         if not df2_onecell.empty: 
                             ax.plot(df2_onecell["time_hrs"], df2_onecell[parameter_to_plot], 
@@ -266,7 +237,6 @@ def plot_time_series_from_form(df_list_processed, sample_ids_selected, parameter
         current_title = plot_title_override if plot_title_override else sample_id
         ax.set_title(current_title, fontsize=14)
         
-        # Add degradation test spans
         if stability_tests_df is not None and not stability_tests_df.empty and min_base_time_overall is not None:
             relevant_tests = stability_tests_df[stability_tests_df['samples'].apply(lambda x: sample_id in x if isinstance(x, list) else False)]
             plotted_deg_labels = set()
@@ -281,24 +251,21 @@ def plot_time_series_from_form(df_list_processed, sample_ids_selected, parameter
                         if label not in plotted_deg_labels:
                             ax.axvspan(ss_hrs, ee_hrs, color='yellow', alpha=0.2, label=label)
                             plotted_deg_labels.add(label)
-                        else: # Avoid duplicate legend entries
+                        else:
                             ax.axvspan(ss_hrs, ee_hrs, color='yellow', alpha=0.2)
                 except Exception as e:
                     print(f"WARNING (plot_time_series_from_form): Could not plot degradation span for test '{row.get('test', 'Unknown')}': {e}")
-
-    # Multiple samples overview plot
     else: 
         try:
             colors_mpl = plt.colormaps.get_cmap('viridis').resampled(len(sample_ids_selected))
-        except AttributeError: # older matplotlib
+        except AttributeError: 
             colors_mpl = plt.cm.get_cmap('viridis', len(sample_ids_selected))
 
         for idx, (sample_id, df_sample) in enumerate(zip(sample_ids_selected, df_list_processed)):
             if df_sample.empty or parameter_to_plot not in df_sample.columns: continue
-            
             df_sample[parameter_to_plot] = pd.to_numeric(df_sample[parameter_to_plot], errors='coerce')
             df_to_plot_multi = df_sample.copy()
-
+            
             if direction_response.lower() == "forward": 
                 df_to_plot_multi = df_sample[df_sample['scan_type'] == 'F']
             elif direction_response.lower() == "reverse": 
@@ -307,33 +274,28 @@ def plot_time_series_from_form(df_list_processed, sample_ids_selected, parameter
             df_to_plot_multi = df_to_plot_multi.dropna(subset=[parameter_to_plot])
             if df_to_plot_multi.empty: continue
 
-            # Group by clump number to plot median and Best/Max for each clump
             clump_median_time = df_to_plot_multi.groupby('clump_number')['time_hrs'].median()
             clump_median_param = df_to_plot_multi.groupby('clump_number')[parameter_to_plot].median()
-            clump_best_param = df_to_plot_multi.groupby('clump_number')[parameter_to_plot].max() # Best is max
-            
+            clump_best_param = df_to_plot_multi.groupby('clump_number')[parameter_to_plot].max()
             color_val = colors_mpl(idx / len(sample_ids_selected) if len(sample_ids_selected) > 1 else 0.5)
-            
             ax.plot(clump_median_time, clump_median_param, linestyle='--', color=color_val, label=f"{sample_id} - Median")
             ax.plot(clump_median_time, clump_best_param, linestyle='-.', color=color_val, label=f"{sample_id} - Best/Max")
-        
         current_title = plot_title_override if plot_title_override else f"Comparison: {', '.join(sample_ids_selected)} ({direction_response} scans)"
         ax.set_title(current_title, fontsize=14)
 
-    # Common plot settings
     ax.set_xlabel("Elapsed time (hours)", fontsize=12)
     ax.set_ylabel(parameter_ylabel, fontsize=12)
     
     if y_limits_param and y_limits_param[0] is not None and y_limits_param[1] is not None:
         ax.set_ylim(y_limits_param[0], y_limits_param[1])
-    else: # Default y-limits if not provided
-        if parameter_to_plot == "pce": ax.set_ylim(0, 25); ax.set_yticks([0,4,8,12,16,20]) # Example ticks
+    else:
+        if parameter_to_plot == "pce": ax.set_ylim(0, 25); ax.set_yticks([0,4,8,12,16,20])
         elif parameter_to_plot == "voc_v": ax.set_ylim(0.5, 1.3)
         elif parameter_to_plot == "jsc_ma": ax.set_ylim(0, 30)
         elif parameter_to_plot == "ff": ax.set_ylim(0, 90)
         elif parameter_to_plot == "rser": ax.set_ylim(0, 50)
-        elif parameter_to_plot == "rsh": ax.set_ylim(0, 20000) # Example of a large range
-        else: ax.autoscale(enable=True, axis='y') # Default autoscale for other params
+        elif parameter_to_plot == "rsh": ax.set_ylim(0, 20000)
+        else: ax.autoscale(enable=True, axis='y')
 
     handles, labels = ax.get_legend_handles_labels()
     if handles: ax.legend(fontsize=10)
@@ -343,29 +305,26 @@ def plot_time_series_from_form(df_list_processed, sample_ids_selected, parameter
 
 def make_error_boxes(ax, xdata, xerror, yerror_25, yerror_75, facecolor='r', edgecolor='none', alpha=0.5):
     errorboxes = []
-    xe = xerror # Assuming xerror is half-width
+    xe = xerror 
     for x, ye25, ye75 in zip(xdata, yerror_25, yerror_75):
         rect = patches.Rectangle((x - xe, ye25), 2.0 * xe, ye75 - ye25, facecolor=facecolor, edgecolor=edgecolor, alpha=alpha)
         errorboxes.append(rect)
-    for box in errorboxes: # Add patches to the axes
+    for box in errorboxes:
         ax.add_patch(box)
-    # Note: This function modifies 'ax' in place. No return needed unless specifically for the list of patches.
 
 def filter_dataframe_for_boxplot(main_df_with_abs_time, time_interval_epoch, sample_id_to_filter, scan_direction_to_filter):
     if main_df_with_abs_time is None or main_df_with_abs_time.empty:
-        return pd.DataFrame() # Return empty DataFrame if input is invalid
+        return pd.DataFrame()
     
     df_filtered = main_df_with_abs_time.copy() 
 
-    # Ensure 'abs_epoch_time' exists and is numeric
     if 'abs_epoch_time' in df_filtered.columns:
         df_filtered['abs_epoch_time'] = pd.to_numeric(df_filtered['abs_epoch_time'], errors='coerce')
-        df_filtered.dropna(subset=['abs_epoch_time'], inplace=True) # Remove rows where conversion failed
+        df_filtered.dropna(subset=['abs_epoch_time'], inplace=True)
     else:
         print("WARNING (filter_dataframe_for_boxplot): 'abs_epoch_time' column missing.")
         return pd.DataFrame()
 
-    # Filter by time interval
     if time_interval_epoch and len(time_interval_epoch) == 2 and \
        pd.notna(time_interval_epoch[0]) and pd.notna(time_interval_epoch[1]):
         df_filtered = df_filtered[
@@ -373,18 +332,35 @@ def filter_dataframe_for_boxplot(main_df_with_abs_time, time_interval_epoch, sam
             (df_filtered['abs_epoch_time'] <= time_interval_epoch[1])
         ]
     
-    # Filter by sample ID
     df_filtered = df_filtered[df_filtered['sample_id'] == sample_id_to_filter]
     
-    # Filter by scan direction
-    if scan_direction_to_filter.upper() in ['F', 'R']:
-        df_filtered = df_filtered[df_filtered['scan_type'] == scan_direction_to_filter.upper()]
-    elif scan_direction_to_filter.lower() != 'both':
-        # Default to 'Both' if an invalid scan_direction is provided, or just don't filter by scan_type
-        print(f"WARNING (filter_dataframe_for_boxplot): Invalid scan_direction '{scan_direction_to_filter}'. Using data for both directions if available, or not filtering by scan type.")
+    # --- START OF MODIFIED SECTION TO HANDLE STRING INPUTS ---
+    processed_scan_direction_for_filtering = "" # This will hold 'F', 'R', or 'BOTH' (or be empty if not filtering by scan type)
+    if isinstance(scan_direction_to_filter, str):
+        sdt_lower = scan_direction_to_filter.lower()
+        if sdt_lower == "forward":
+            processed_scan_direction_for_filtering = "F"
+        elif sdt_lower == "reverse":
+            processed_scan_direction_for_filtering = "R"
+        elif sdt_lower == "both":
+            processed_scan_direction_for_filtering = "BOTH" # Marker for "don't filter by scan_type"
+        # If scan_direction_to_filter is already 'F' or 'R' (e.g., from manual input)
+        elif scan_direction_to_filter.upper() in ['F', 'R']:
+            processed_scan_direction_for_filtering = scan_direction_to_filter.upper()
+        else: # Unrecognized string
+            print(f"WARNING (filter_dataframe_for_boxplot): Unrecognized scan_direction '{scan_direction_to_filter}'. Using data for both directions.")
+            processed_scan_direction_for_filtering = "BOTH"
+    else:
+        # Non-string input, default to no filter or handle as error
+        print(f"WARNING (filter_dataframe_for_boxplot): scan_direction_to_filter is not a string: {scan_direction_to_filter}. Using data for both directions.")
+        processed_scan_direction_for_filtering = "BOTH"
+    # --- END OF MODIFIED SECTION ---
+    
+    if processed_scan_direction_for_filtering in ['F', 'R']:
+        df_filtered = df_filtered[df_filtered['scan_type'] == processed_scan_direction_for_filtering]
+    # If processed_scan_direction_for_filtering is "BOTH", no scan_type filter is applied.
     
     return df_filtered
-
 
 def my_boxplot_comparison1(main_df_with_abs_time, time_interval_epoch, list_of_sample_ids, 
                           parameter_to_plot, scan_direction_to_plot, 
@@ -404,8 +380,8 @@ def my_boxplot_comparison1(main_df_with_abs_time, time_interval_epoch, list_of_s
         df_filtered = filter_dataframe_for_boxplot(main_df_with_abs_time, 
                                                    time_interval_epoch, 
                                                    sample_id, 
-                                                   scan_direction_to_plot)
-        parameter_data = [] # Initialize as empty list
+                                                   scan_direction_to_plot) # scan_direction_to_plot can be "Forward", "Reverse", "Both"
+        parameter_data = [] 
         if parameter_to_plot in df_filtered.columns:
             try:
                 parameter_data_series = pd.to_numeric(df_filtered[parameter_to_plot], errors='coerce').dropna()
@@ -416,16 +392,26 @@ def my_boxplot_comparison1(main_df_with_abs_time, time_interval_epoch, list_of_s
         else:
             print(f"WARNING (my_boxplot_comparison1): Column {parameter_to_plot} not found for sample {sample_id}.")
         
-        data_for_boxplot.append(parameter_data) # Append (possibly empty) list
+        data_for_boxplot.append(parameter_data) 
         
         current_tick_label = tick_labels_for_plot[idx]
-        scan_dir_label = scan_direction_to_plot if scan_direction_to_plot.upper() in ["F","R"] else "Both"
+        
+        # For legend display, use the input scan_direction_to_plot string directly
+        # or create a display version (e.g., "Fwd", "Rev", "Both")
+        scan_dir_display_for_legend = scan_direction_to_plot
+        if isinstance(scan_direction_to_plot, str):
+            sdt_lower = scan_direction_to_plot.lower()
+            if sdt_lower == "forward": scan_dir_display_for_legend = "Forward" # Or "Fwd" if you prefer
+            elif sdt_lower == "reverse": scan_dir_display_for_legend = "Reverse" # Or "Rev"
+            elif sdt_lower == "both": scan_dir_display_for_legend = "Both"
+            elif scan_direction_to_plot.upper() in ['F', 'R']: scan_dir_display_for_legend = scan_direction_to_plot.upper()
 
-        if parameter_data: # Only calculate stats if data exists
-            stats_str = (f'{current_tick_label} ({scan_dir_label}): '
+
+        if parameter_data: 
+            stats_str = (f'{current_tick_label} ({scan_dir_display_for_legend}): '
                          f'Avg={np.average(parameter_data):.2f}, Med={np.median(parameter_data):.2f}, N={len(parameter_data)}')
         else:
-            stats_str = f'{current_tick_label} ({scan_dir_label}): No data'
+            stats_str = f'{current_tick_label} ({scan_dir_display_for_legend}): No data'
         legend_stats_list.append(stats_str)
 
     num_samples = len(list_of_sample_ids)
@@ -438,79 +424,73 @@ def my_boxplot_comparison1(main_df_with_abs_time, time_interval_epoch, list_of_s
     plt.rcParams.update(params)
         
     bplot = None 
-    # Filter out empty lists from data_for_boxplot to avoid errors in boxplot and ensure labels match
     bplot_data_to_plot = [d for d in data_for_boxplot if d] 
     bplot_tick_labels = [tick_labels_for_plot[i] for i, d in enumerate(data_for_boxplot) if d]
 
-    if bplot_data_to_plot: # Only plot if there's data
+    if bplot_data_to_plot: 
         bplot = ax.boxplot(bplot_data_to_plot, tick_labels=bplot_tick_labels, patch_artist=True, widths=0.6)
         
         colors_to_use_for_plot = []
-        actual_plotted_indices = [i for i, d in enumerate(data_for_boxplot) if d] # Indices of samples that actually have data
+        actual_plotted_indices = [i for i, d in enumerate(data_for_boxplot) if d] 
 
-        if box_colors and len(box_colors) == num_samples: # if custom colors are provided for all original samples
+        if box_colors and len(box_colors) == num_samples: 
             colors_to_use_for_plot = [box_colors[i] for i in actual_plotted_indices]
         else:
             if box_colors: 
                  print("WARNING (my_boxplot_comparison1): 'box_colors' length mismatch or not provided. Defaulting.")
-            try: # Matplotlib 3.x
+            try: 
                 colors_cmap = plt.colormaps.get_cmap('Pastel1').resampled(len(bplot_data_to_plot))
-            except AttributeError: # older matplotlib
+            except AttributeError: 
                 colors_cmap = plt.cm.get_cmap('Pastel1', len(bplot_data_to_plot))
             colors_to_use_for_plot = [colors_cmap(i % colors_cmap.N) for i in range(len(bplot_data_to_plot))]
         
         legend_handles = []
-        # Ensure legend_stats_list is also filtered to match plotted data
         processed_labels_for_legend = [legend_stats_list[i] for i in actual_plotted_indices]
         
         for i, patch in enumerate(bplot['boxes']):
             patch.set_facecolor(colors_to_use_for_plot[i])
             legend_handles.append(patch)
         
-        # Jitter plot for individual data points
         box_idx_for_scatter = 0
-        for i, data_points in enumerate(data_for_boxplot): # Iterate through original list to maintain sample order for jitter
-            if data_points: # Only plot if there is data
+        for i, data_points in enumerate(data_for_boxplot): 
+            if data_points: 
                 jitter_strength = 0.08 if len(bplot_data_to_plot) > 2 else 0.04
                 jitter = np.random.normal(0, jitter_strength, size=len(data_points))
                 ax.scatter([box_idx_for_scatter + 1 + j for j in jitter], data_points, alpha=0.5, color='black', s=20)
-                box_idx_for_scatter += 1 # Increment only for boxes that are actually plotted
+                box_idx_for_scatter += 1 
         
         if legend_handles:
              ax.legend(legend_handles, processed_labels_for_legend, title="Legend (Avg, Median, N)", loc='best', fontsize='small')
     else: 
         ax.text(0.5, 0.5, "No data to display for selected criteria.", 
                 horizontalalignment='center', verticalalignment='center', transform=ax.transAxes)
-        # Print summary stats even if no plot, as they might contain "No data" messages
         print("\nSummary Stats (for the selected time interval and scan direction):")
         for stat_line in legend_stats_list: 
             print(stat_line)
     
-    ax.set_title(plot_title, fontsize=plt.rcParams.get('axes.titlesize', 'x-large')) # Main title for figure
+    ax.set_title(plot_title, fontsize=plt.rcParams.get('axes.titlesize', 'x-large')) 
     plt.ylabel(y_axis_label) 
     
     if y_limits and y_limits[0] is not None and y_limits[1] is not None:
         plt.ylim(y_limits[0], y_limits[1])
     
-    # Rotate x-axis labels if they are long or numerous
     if len(bplot_tick_labels) > 4 or any(len(str(label)) > 15 for label in bplot_tick_labels):
          plt.xticks(rotation=30, ha="right")
     else:
          plt.xticks(rotation=0, ha="center")
 
     plt.grid(True, alpha=0.25, axis='y') 
-    plt.tight_layout(rect=[0, 0, 1, 0.96]) # Adjust layout to prevent title overlap
+    plt.tight_layout(rect=[0, 0, 1, 0.96]) 
     return fig
 
-
-# Lmfit models (assuming these are used elsewhere or will be, keeping them)
+# Lmfit models 
 def Constant(x, constant):
     return constant
 
 def Stretch_Exp(x, amp, tau, shift, beta):
     return amp * np.exp(-((x - shift) / tau)**beta)
 
-# Helper class for colors (from notebook, useful for print statements if needed)
+# Helper class for colors
 class color:
    PURPLE = '\033[95m'; CYAN = '\033[96m'; DARKCYAN = '\033[36m'
    BLUE = '\033[94m'; GREEN = '\033[92m'; YELLOW = '\033[93m'
