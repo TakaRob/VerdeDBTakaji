@@ -9,7 +9,7 @@ import lmfit as lm
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
-# Try to import from db_dataverse.py; provide dummy classes if not found
+# Try to import from db_dataverse.py; 
 try:
     from db_dataverse import SampleDataverseTable, JVScanDataverseTable
 except ImportError:
@@ -129,7 +129,7 @@ def dataframe_clumping(jv_test_data_list_dfs, min_gap_width=1.0, max_clump_width
         
         df2.insert(0, "measured_on", timestamp_series)
         
-        # Ensure min_base_time_val calculation is robust to NaNs
+        # Ensure min_base_time_val calculation deals with NaNs
         min_base_time_val = pd.to_numeric(df['base_time'], errors='coerce').dropna().min()
 
         if pd.isna(min_base_time_val):
